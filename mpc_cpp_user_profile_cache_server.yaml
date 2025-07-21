@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  mpc_cpp_user_cache_server:
+  mpc_cpp_user_profile_cache_server:
     build: .
     ports:
       - "${HOST_PORT_ADDRESS:-8080}:8080"

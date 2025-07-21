@@ -182,26 +182,21 @@ int main()
         }
     });
 
-    CROW_ROUTE(app, "/set/user").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+    CROW_ROUTE(app, "/set/user/profile").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
         auto body = crow::json::load(req.body);
 
         if (!body || 
             !body.has("id") || 
             !body.has("token") || 
-            !body.has("online_status") || 
-            !body.has("custom_status") ||
-            !body.has("name") ||
-            !body.has("created_on") ||
-            !body.has("avatar_url_path") ||
-            !body.has("avatar_title") ||
-            !body.has("language_code") ||
-            !body.has("region_code") ||
-            !body.has("login_on") ||
-            !body.has("logout_on") ||
-            !body.has("login_type") ||
-            !body.has("account_type")
+            !body.has("birth_date") || 
+            !body.has("ethnicity") ||
+            !body.has("first_name") ||
+            !body.has("last_name") ||
+            !body.has("middle_name") ||
+            !body.has("maiden_name") ||
+            !body.has("gender") 
             ) {
-            return crow::response(400, "Error: 1");//Something is missing from the condition.
+            return crow::response(400, "Error: 1B");//Something is missing from the condition.
         }
 
         std::string JWT = body["token"].s();
@@ -214,20 +209,17 @@ int main()
             std::string encrypted_user_id = body["id"].s();
             std::string decrypted_user_id = AES256_Decryptor(encrypted_user_id);
 
-            client.rpush(decrypted_user_id, { 
-                encrypted_user_id, 
-                body["online_status"].s(),
-                body["custom_status"].s(),
-                body["name"].s(),
-                body["created_on"].s(),
-                body["avatar_url_path"].s(),
-                body["avatar_title"].s(),
-                body["language_code"].s(),
-                body["region_code"].s(),
-                body["login_on"].s(),
-                body["logout_on"].s(),
-                body["login_type"].s(),
-                body["account_type"].s()
+            client.ltrim(decrypted_user_id, 1, 0);
+
+            client.rpush(decrypted_user_id, {
+                encrypted_user_id,
+                body["birth_date"].s(),
+                body["ethnicity"].s(),
+                body["first_name"].s(),
+                body["last_name"].s(),
+                body["middle_name"].s(),
+                body["maiden_name"].s(),
+                body["gender"].s()
             });
 
             client.commit();
@@ -241,7 +233,7 @@ int main()
         }
     });
 
-    CROW_ROUTE(app, "/get/user").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+    CROW_ROUTE(app, "/get/user/profile").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
         auto body = crow::json::load(req.body);
 
         if (!body || 
@@ -269,18 +261,35 @@ int main()
                 return crow::response(404, "Error 5");//Reply from the database is incorrect.
             }
 
-            json j_array = json::array();
+            json j_object;
+
+            size_t index = 0;
 
             for (const auto& element : reply.as_array()) {
+                std::string key;
+                switch (index) {
+                    case 0: key = "id"; break;
+                    case 1: key = "birth_date"; break;
+                    case 2: key = "ethnicity"; break;
+                    case 3: key = "first_name"; break;
+                    case 4: key = "last_name"; break;
+                    case 5: key = "middle_name"; break;
+                    case 6: key = "maiden_name"; break;
+                    case 7: key = "gender"; break;
+                    default: key = "unknown_" + std::to_string(index); break;
+                }
+
                 if (element.is_string()) {
-                    j_array.push_back(element.as_string());
+                    j_object[key] = element.as_string();
                 }
                 else {
-                    j_array.push_back(nullptr);// fallback if element isn't a string
+                    j_object[key] = nullptr;
                 }
+
+                ++index;
             }
 
-            return crow::response(200, j_array.dump());
+            return crow::response(200, j_object.dump());
 
         } catch (const std::exception& e) {
 
@@ -289,7 +298,7 @@ int main()
         }
     });
 
-    CROW_ROUTE(app, "/get/users").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+    CROW_ROUTE(app, "/get/users/profiles").methods(crow::HTTPMethod::Post)([](const crow::request& req) {
         auto body = crow::json::load(req.body);
 
         if (!body ||

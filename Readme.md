@@ -22,7 +22,7 @@ JWT_CLIENT_KEY=(you may have to modify the code to remove these)
 
 # Cmakeuplist.txt of what's in here
 cmake_minimum_required(VERSION 3.16)
-project(mpc_cpp_user_cache_server)
+project(mpc_cpp_user_profile_cache_server)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,9 +52,9 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/nlohmann/include
 )
 
-add_executable(mpc_cpp_user_cache_server mpc_cpp_user_cache_server.cpp)
+add_executable(mpc_cpp_user_profile_cache_server mpc_cpp_user_profile_cache_server.cpp)
 
-target_link_libraries(mpc_cpp_user_cache_server
+target_link_libraries(mpc_cpp_user_profile_cache_server
     PRIVATE 
     OpenSSL::Crypto
     cpp_redis
@@ -89,12 +89,12 @@ cmake --build . --config Release
 
 # Docker Option 1) for CLI command:
 1) Navigate CLI to folder and use
-docker compose -f mpc_cpp_user_cache_server.yaml up -d
+docker compose -f mpc_cpp_user_profile_cache_server.yaml up -d
 
 # Docker Option 2) startup for CLI command:
 1) Navigate CLI to folder and use
 docker build -t mpc_cpp_online_status_server_rom .
-docker run -d -p {SERVER_NETWORK_PORT_NUMBER}:{DOCKER_CONTAINER_PORT_NUMBER} --name mpc_cpp_user_cache_server mpc_cpp_online_status_server_rom
+docker run -d -p {SERVER_NETWORK_PORT_NUMBER}:{DOCKER_CONTAINER_PORT_NUMBER} --name mpc_cpp_user_profile_cache_server mpc_cpp_online_status_server_rom
 
 # Other Notes
 .Env file must be in the same directory as the .exe if using Cmake.
