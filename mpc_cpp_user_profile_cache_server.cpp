@@ -107,17 +107,25 @@ int Authenticate_JWT_Claims(const std::string& JWT) {
     try {
         const char* JWT_ISSUER_KEY = std::getenv("JWT_ISSUER_KEY");
         const char* JWT_CLIENT_KEY = std::getenv("JWT_CLIENT_KEY");
+        const char* JWT_CLIENT_ADDRESS = std::getenv("JWT_CLIENT_ADDRESS");
+
         auto decoded = jwt::decode(JWT);
         auto payload_json = nlohmann::json::parse(decoded.get_payload());
 
         for (auto it = payload_json.begin(); it != payload_json.end(); ++it) {
             if (it.value().is_string()) {
+
                 if (it.key() == "aud" && AES256_Decryptor(it.value()) != JWT_CLIENT_KEY) {
                     return 0;
                 }
                 else if (it.key() == "iss" && AES256_Decryptor(it.value()) != JWT_ISSUER_KEY) {
                     return 0;
                 }
+
+                if (AES256_Decryptor(it.value()) == JWT_CLIENT_ADDRESS) {
+                    return 1;
+                }
+
             }
             else if (std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) >= it.value()) {
                 return 0;
