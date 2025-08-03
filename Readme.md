@@ -1,4 +1,22 @@
-# Dependencies
+# Cmake Build Instructions (preferred method)
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+
+# Docker Option 1) for CLI command:
+1) Navigate CLI to folder and use
+docker compose -f mpc_cpp_user_profile_cache_server.yaml up -d
+
+# Docker Option 2) startup for CLI command:
+1) Navigate CLI to folder and use
+docker build -t mpc_cpp_online_status_server_rom .
+docker run -d -p {SERVER_NETWORK_PORT_NUMBER}:{DOCKER_CONTAINER_PORT_NUMBER} --name mpc_cpp_user_profile_cache_server mpc_cpp_online_status_server_rom
+
+# Other Notes
+.Env file must be in the same directory as the .exe inside the build folder.
+
+# Dependencies that you must have somewhere in your project
 Library	Repo URL
 Crow	https://github.com/CrowCpp/crow.git
 ASIO	https://github.com/chriskohlhoff/asio.git
@@ -8,13 +26,25 @@ jwt-cpp	https://github.com/Thalhammer/jwt-cpp.git
 nlohmann	https://github.com/nlohmann/json.git
 
 
-# Example .Env File you must create and adjust
-HOST_IP_ADDRESS=127.0.0.1
+# Example .Env File you must create and adjust outside of Docker
+HOST_IP_ADDRESS=127.0.0.1 
 HOST_PORT_ADDRESS=8000
 REDIS_HOST_ADDRESS=127.0.0.1
 REDIS_PORT_ADDRESS=6379
 
 ENCRYPTION_KEY=(enter 32 character string here
+ENCRYPTION_IV=(enter 16 character string here)
+
+JWT_ISSUER_KEY=(Only use if ur encrpting values)
+JWT_CLIENT_KEY=(you may have to modify the code to remove these)
+
+# Example .Env File you must create and adjust inside of Docker
+HOST_IP_ADDRESS=(container_name)
+HOST_PORT_ADDRESS=(container_port)
+REDIS_HOST_ADDRESS=(redis_container_name)
+REDIS_PORT_ADDRESS=6379
+
+ENCRYPTION_KEY=(enter 32 character string here)
 ENCRYPTION_IV=(enter 16 character string here)
 
 JWT_ISSUER_KEY=(Only use if ur encrpting values)
@@ -61,13 +91,6 @@ target_link_libraries(mpc_cpp_user_profile_cache_server
     tacopie
 )
 
-
-# Cmake Build Instructions (preferred method)
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --config Release
-
 # Example POST - SET example
 
 {
@@ -87,14 +110,3 @@ cmake --build . --config Release
   "token": "JWTToken"
 }
 
-# Docker Option 1) for CLI command:
-1) Navigate CLI to folder and use
-docker compose -f mpc_cpp_user_profile_cache_server.yaml up -d
-
-# Docker Option 2) startup for CLI command:
-1) Navigate CLI to folder and use
-docker build -t mpc_cpp_online_status_server_rom .
-docker run -d -p {SERVER_NETWORK_PORT_NUMBER}:{DOCKER_CONTAINER_PORT_NUMBER} --name mpc_cpp_user_profile_cache_server mpc_cpp_online_status_server_rom
-
-# Other Notes
-.Env file must be in the same directory as the .exe if using Cmake.

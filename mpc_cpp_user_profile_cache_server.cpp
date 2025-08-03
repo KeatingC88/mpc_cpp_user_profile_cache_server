@@ -2,10 +2,8 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
-
 #include "crow_all.h"
 #include <tacopie/tacopie>
-
 #include "jwt-cpp/jwt.h"
 #include <json.hpp>
 using json = nlohmann::json;
@@ -26,6 +24,14 @@ cpp_redis::client client;
 std::vector<unsigned char> global_key;
 std::vector<unsigned char> global_iv;
 
+std::string require_env(const char* name) {
+    const char* val = std::getenv(name);
+    if (!val) {
+        throw std::runtime_error(std::string("Missing required env var: ") + name);
+    }
+    return std::string(val);
+}
+
 void Load_Env_File(const std::string& path = ".env") {
     std::ifstream file(path);
 
@@ -43,11 +49,18 @@ void Load_Env_File(const std::string& path = ".env") {
 
         if (std::getline(lineStream, key, '=') &&
             std::getline(lineStream, value)) {
-            #ifdef _WIN32
-                _putenv_s(key.c_str(), value.c_str());
-            #else
-                setenv(key.c_str(), value.c_str(), 1);
-            #endif
+
+            if (!value.empty() && value.back() == '\r') {
+                value.pop_back();
+            }
+
+#ifdef _WIN32
+            _putenv_s(key.c_str(), value.c_str());
+            std::cout << "Loaded env var: " << key << "=" << require_env(key.c_str()) << std::endl;
+#else
+            setenv(key.c_str(), value.c_str(), 1);
+            std::cout << "Loaded env var: " << key << "=" << require_env(key.c_str()) << std::endl;
+#endif
         }
     }
 }
@@ -73,6 +86,7 @@ std::vector<unsigned char> SHA256(const std::string& input) {
 }
 
 std::string AES256_Decryptor(const std::string& base64_ciphertext) {
+    
     if (global_key.size() != 32 || global_iv.size() != 16) {
         throw std::runtime_error("Key must be 32 bytes and IV must be 16 bytes");
     }
@@ -104,10 +118,12 @@ std::string AES256_Decryptor(const std::string& base64_ciphertext) {
 }
 
 int Authenticate_JWT_Claims(const std::string& JWT) {
+
     try {
-        const char* JWT_ISSUER_KEY = std::getenv("JWT_ISSUER_KEY");
-        const char* JWT_CLIENT_KEY = std::getenv("JWT_CLIENT_KEY");
-        const char* JWT_CLIENT_ADDRESS = std::getenv("JWT_CLIENT_ADDRESS");
+
+        std::string JWT_ISSUER_KEY = require_env("JWT_ISSUER_KEY");
+        std::string JWT_CLIENT_KEY = require_env("JWT_CLIENT_KEY");
+        std::string JWT_CLIENT_ADDRESS = require_env("JWT_CLIENT_ADDRESS");
 
         auto decoded = jwt::decode(JWT);
         auto payload_json = nlohmann::json::parse(decoded.get_payload());
@@ -126,14 +142,12 @@ int Authenticate_JWT_Claims(const std::string& JWT) {
                     return 1;
                 }
 
-            }
-            else if (std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) >= it.value()) {
+            } else if (std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) >= it.value()) {
                 return 0;
             }
         }
         return 1;
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         return 0;
     }
 }
@@ -165,18 +179,22 @@ int main()
 {
     crow::App<CORS> app;
     Load_Env_File();
-    const char* HOST_IP_ADDRESS = std::getenv("HOST_IP_ADDRESS");
-    const char* HOST_PORT_ADDRESS = std::getenv("HOST_PORT_ADDRESS");
-    const char* REDIS_HOST_ADDRESS = std::getenv("REDIS_HOST_ADDRESS");
-    const char* REDIS_PORT_ADDRESS = std::getenv("REDIS_PORT_ADDRESS");
 
-    const char* key_env = std::getenv("ENCRYPTION_KEY");
-    const char* iv_env = std::getenv("ENCRYPTION_IV");
+    std::string SERVER_NETWORK_HOST_IP = require_env("SERVER_NETWORK_HOST_IP");
+    std::string SERVER_NETWORK_SOCKET_PORT = require_env("SERVER_NETWORK_SOCKET_PORT");
 
-    if (!key_env || !iv_env || std::strlen(key_env) != 32 || std::strlen(iv_env) != 16) {
-        std::cerr << "Invalid key or IV in environment variables." << std::endl;
+    std::string REDIS_HOST_ADDRESS = require_env("DOCKER_INTERNAL_REDIS_HOST_ADDRESS");
+    std::string REDIS_PORT_ADDRESS = require_env("DOCKER_INTERNAL_REDIS_PORT_ADDRESS");
+
+    std::string key_env = require_env("ENCRYPTION_KEY");
+    std::string iv_env = require_env("ENCRYPTION_IV");
+
+    if (key_env.length() != 32 || iv_env.length() != 16) {
+        std::cerr << "Invalid key or IV length in environment variables." << std::endl;
         return 1;
     }
+
+    std::cout << "Encryption key and IV loaded successfully.\n";
 
     std::string key_str = key_env;
     std::string iv_str = iv_env;
@@ -379,5 +397,5 @@ int main()
         }
     });
 
-    app.bindaddr(HOST_IP_ADDRESS).port(std::stoi(HOST_PORT_ADDRESS)).multithreaded().run();
+    app.bindaddr(SERVER_NETWORK_HOST_IP).port(std::stoi(SERVER_NETWORK_SOCKET_PORT)).multithreaded().run();
 }

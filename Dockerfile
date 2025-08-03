@@ -1,39 +1,31 @@
 FROM ubuntu:22.04
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
+# Install required tools and libraries
+RUN apt-get update && apt-get install -y \
     cmake \
-    git \
+    g++ \
+    make \
     libssl-dev \
-    libboost-system-dev \
-    libboost-thread-dev \
-    libboost-program-options-dev \
-    libboost-chrono-dev \
-    libboost-filesystem-dev \
-    libboost-regex-dev \
-    libboost-iostreams-dev \
-    libboost-date-time-dev \
-    libboost-test-dev \
-    libboost-all-dev \
-    pkg-config \
-    wget \
-    curl
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create app directory
+# Set working directory for build
 WORKDIR /app
 
-# Copy source code
+# Copy entire project into container
 COPY . .
 
+# Move .env to where your binary will run from
+COPY .env ./build/
+
 # Build the project
-RUN mkdir -p build && cd build && \
-    cmake .. && \
-    make
+RUN mkdir -p build \
+ && cd build \
+ && cmake .. \
+ && make
 
-# Expose the server port
-EXPOSE 8080
+# Set runtime working directory to match .env location
+WORKDIR /app/build
 
-# Command to run
-CMD ["./build/mpc_cpp_user_profile_cache_server"]
+# Run your built server (which now finds .env in CWD)
+CMD ["./mpc_cpp_user_profile_cache_server"]

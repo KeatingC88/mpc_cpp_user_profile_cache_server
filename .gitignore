@@ -1,5 +1,13 @@
 # CMake build folders
 /build/
+/build_external/
+/cpp_redis/
+/crow/
+/jwt-cpp/
+/nlohmann/
+/tacopie/
+/x64/
+/asio/
 /out/
 /CMakeFiles/
 /CMakeCache.txt

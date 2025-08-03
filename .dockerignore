@@ -1,0 +1,10 @@
+build/
+build_external/
+**/CMakeCache.txt
+**/CMakeFiles/
+**/*.exe
+**/*.obj
+**/*.vcxproj*
+**/.vs/
+release/
+*.pdb
