@@ -31,6 +31,24 @@ namespace App::Services::AES {
         std::cout << "Encryption loaded successfully.\n";
     }
 
+    std::string Base64_Encoder(const std::vector<unsigned char>& input) {
+        BIO* bio = BIO_new(BIO_s_mem());
+        BIO* b64 = BIO_new(BIO_f_base64());
+        bio = BIO_push(b64, bio);
+        BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);  // No newlines
+
+        BIO_write(bio, input.data(), static_cast<int>(input.size()));
+        BIO_flush(bio);
+
+        BUF_MEM* buffer_ptr;
+        BIO_get_mem_ptr(bio, &buffer_ptr);
+
+        std::string output(buffer_ptr->data, buffer_ptr->length);
+
+        BIO_free_all(bio);
+        return output;
+    }
+
     std::vector<unsigned char> Base64_Decoder(const std::string& input) {
         BIO* bio = BIO_new_mem_buf(input.data(), input.length());
         BIO* b64 = BIO_new(BIO_f_base64());
@@ -80,5 +98,33 @@ namespace App::Services::AES {
         EVP_CIPHER_CTX_free(ctx);
 
         return std::string(plaintext.begin(), plaintext.end());
+    }
+
+    std::string AES::Encrypt(const std::string& plaintext) const {
+        std::vector<unsigned char> ciphertext(plaintext.size() + EVP_MAX_BLOCK_LENGTH);
+
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) throw std::runtime_error("Failed to create context");
+
+        int len = 0, ciphertext_len = 0;
+
+        if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, global_key.data(), global_iv.data()))
+            throw std::runtime_error("EncryptInit failed");
+
+        if (!EVP_EncryptUpdate(ctx, ciphertext.data(), &len,
+            reinterpret_cast<const unsigned char*>(plaintext.data()), plaintext.size()))
+            throw std::runtime_error("EncryptUpdate failed");
+
+        ciphertext_len = len;
+
+        if (!EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len))
+            throw std::runtime_error("EncryptFinal failed");
+
+        ciphertext_len += len;
+        ciphertext.resize(ciphertext_len);
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        return Base64_Encoder(ciphertext);
     }
 }

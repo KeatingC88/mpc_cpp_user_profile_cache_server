@@ -58,14 +58,14 @@ namespace App::Controllers {
                 client.ltrim(decrypted_user_id, 1, 0);
 
                 client.rpush(decrypted_user_id, {
-                    encrypted_user_id,
-                    body["birth_date"].s(),
-                    body["ethnicity"].s(),
-                    body["first_name"].s(),
-                    body["last_name"].s(),
-                    body["middle_name"].s(),
-                    body["maiden_name"].s(),
-                    body["gender"].s()
+                    decrypted_user_id,
+                    AES.Decrypt(body["birth_date"].s()),
+                    AES.Decrypt(body["ethnicity"].s()),
+                    AES.Decrypt(body["first_name"].s()),
+                    AES.Decrypt(body["last_name"].s()),
+                    AES.Decrypt(body["middle_name"].s()),
+                    AES.Decrypt(body["maiden_name"].s()),
+                    AES.Decrypt(body["gender"].s())
                     });
 
                 client.commit();
@@ -80,7 +80,7 @@ namespace App::Controllers {
             }
             });
 
-        CROW_ROUTE(app, "/get/user/profile").methods(crow::HTTPMethod::Post)([JWT,AES](const crow::request& req) {
+        CROW_ROUTE(app, "/get/user/profile").methods(crow::HTTPMethod::Post)([JWT, AES](const crow::request& req) {
             auto body = crow::json::load(req.body);
 
             if (!body ||
@@ -96,6 +96,7 @@ namespace App::Controllers {
             }
 
             try {
+
                 std::string encrypted_user_id = body["id"].s();
                 std::string decrypted_user_id = AES.Decrypt(encrypted_user_id);
 
@@ -136,15 +137,14 @@ namespace App::Controllers {
                     ++index;
                 }
 
-                return crow::response(200, j_object.dump());
+                return crow::response(200, AES.Encrypt(j_object.dump()));
 
-            }
-            catch (const std::exception& e) {
-
+            } catch (const std::exception& e) {
+                std::cout << e.what() << std::endl;
                 return crow::response(500, e.what());
 
             }
-            });
+        });
 
         CROW_ROUTE(app, "/get/users/profiles").methods(crow::HTTPMethod::Post)([JWT,AES](const crow::request& req) {
             auto body = crow::json::load(req.body);
@@ -158,6 +158,7 @@ namespace App::Controllers {
             }
 
             std::string JWT_ClientSide = body["token"].s();
+
             if (!JWT.Authenticate_Claims(JWT_ClientSide)) {
                 return crow::response(400, "Error 7");//Something is incorrect in the JWToken.
             }
@@ -210,14 +211,14 @@ namespace App::Controllers {
                     result_json[key] = list_items;
                 }
 
-                return crow::response(200, result_json.dump(2));
+                return crow::response(200, AES.Encrypt(result_json.dump(2)));
 
-            }
-            catch (const std::exception& e) {
+            } catch (const std::exception& e) {
 
                 return crow::response(500, e.what());
 
             }
+
             });
 
     }
